@@ -52,6 +52,12 @@ func ErrorEnabled() bool {
 	return defaultScope.Level >= ErrorLevel
 }
 
+// Fatalf uses Errorf to construct and log a message at error level, and then exit.
+func Fatalf(template string, args ...interface{}) {
+	Errorf(template, args)
+	os.Exit(-1)
+}
+
 // Warn outputs a message at warn level.
 func Warn(msg string, fields ...zapcore.Field) {
 	if defaultScope.Level >= WarnLevel {

@@ -30,8 +30,8 @@ import (
 	"google.golang.org/grpc/status"
 
 	mixerpb "istio.io/api/mixer/v1"
-	"istio.io/istio/mixer/cmd/shared"
 	"istio.io/istio/mixer/pkg/attribute"
+	"istio.io/istio/pkg/log"
 	"istio.io/istio/pkg/tracing"
 )
 
@@ -243,14 +243,14 @@ func decodeStatus(status rpc.Status) string {
 	return result
 }
 
-func dumpAttributes(printf, fatalf shared.FormatFn, attrs *mixerpb.CompressedAttributes) {
+func dumpAttributes(attrs *mixerpb.CompressedAttributes) {
 	if attrs == nil {
 		return
 	}
 
 	b, err := attribute.GetBagFromProto(attrs, nil)
 	if err != nil {
-		fatalf(fmt.Sprintf("  Unable to decode returned attributes: %v", err))
+		log.Fatalf(fmt.Sprintf("  Unable to decode returned attributes: %v", err))
 	}
 
 	names := b.Names()
@@ -271,10 +271,10 @@ func dumpAttributes(printf, fatalf shared.FormatFn, attrs *mixerpb.CompressedAtt
 	}
 
 	_ = tw.Flush()
-	printf("%s", buf.String())
+	log.Infof("%s", buf.String())
 }
 
-func dumpReferencedAttributes(printf, fatalf shared.FormatFn, attrs *mixerpb.ReferencedAttributes) {
+func dumpReferencedAttributes(attrs *mixerpb.ReferencedAttributes) {
 	vals := make([]string, 0, len(attrs.AttributeMatches))
 	for _, at := range attrs.AttributeMatches {
 		out := attrs.Words[-1*at.Name-1]
@@ -297,6 +297,6 @@ func dumpReferencedAttributes(printf, fatalf shared.FormatFn, attrs *mixerpb.Ref
 	}
 
 	_ = tw.Flush()
-	printf("%s", buf.String())
+	log.Infof("%s", buf.String())
 
 }

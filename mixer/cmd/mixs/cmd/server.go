@@ -17,14 +17,14 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
-	"istio.io/istio/mixer/cmd/shared"
 	"istio.io/istio/mixer/pkg/adapter"
 	"istio.io/istio/mixer/pkg/server"
 	"istio.io/istio/mixer/pkg/template"
+	"istio.io/istio/pkg/log"
 	"istio.io/istio/pkg/version"
 )
 
-func serverCmd(info map[string]template.Info, adapters []adapter.InfoFn, printf, fatalf shared.FormatFn) *cobra.Command {
+func serverCmd(info map[string]template.Info, adapters []adapter.InfoFn) *cobra.Command {
 	sa := server.DefaultArgs()
 	sa.Templates = info
 	sa.Adapters = adapters
@@ -33,7 +33,7 @@ func serverCmd(info map[string]template.Info, adapters []adapter.InfoFn, printf,
 		Use:   "server",
 		Short: "Starts Mixer as a server",
 		Run: func(cmd *cobra.Command, args []string) {
-			runServer(sa, printf, fatalf)
+			runServer(sa)
 		},
 	}
 
@@ -66,12 +66,12 @@ func serverCmd(info map[string]template.Info, adapters []adapter.InfoFn, printf,
 	serverCmd.PersistentFlags().StringVarP(&sa.ConfigIdentityAttribute, "configIdentityAttribute", "", sa.ConfigIdentityAttribute,
 		"Attribute that is used to identify applicable scopes.")
 	if err := serverCmd.PersistentFlags().MarkHidden("configIdentityAttribute"); err != nil {
-		fatalf("unable to hide: %v", err)
+		log.Fatalf("unable to hide: %v", err)
 	}
 	serverCmd.PersistentFlags().StringVarP(&sa.ConfigIdentityAttributeDomain, "configIdentityAttributeDomain", "", sa.ConfigIdentityAttributeDomain,
 		"The domain to which all values of the configIdentityAttribute belong. For kubernetes services it is svc.cluster.local")
 	if err := serverCmd.PersistentFlags().MarkHidden("configIdentityAttributeDomain"); err != nil {
-		fatalf("unable to hide: %v", err)
+		log.Fatalf("unable to hide: %v", err)
 	}
 	serverCmd.PersistentFlags().StringVar(&sa.LivenessProbeOptions.Path, "livenessProbePath", sa.LivenessProbeOptions.Path,
 		"Path to the file for the liveness probe.")
@@ -90,21 +90,21 @@ func serverCmd(info map[string]template.Info, adapters []adapter.InfoFn, printf,
 	return serverCmd
 }
 
-func runServer(sa *server.Args, printf, fatalf shared.FormatFn) {
-	printf("Mixer started with\n%s", sa)
+func runServer(sa *server.Args) {
+	log.Infof("Mixer started with\n%s", sa)
 
 	s, err := server.New(sa)
 	if err != nil {
-		fatalf("Unable to initialize Mixer: %v", err)
+		log.Fatalf("Unable to initialize Mixer: %v", err)
 	}
 
-	printf("Istio Mixer: %s", version.Info)
-	printf("Starting gRPC server on port %v", sa.APIPort)
+	log.Infof("Istio Mixer: %s", version.Info)
+	log.Infof("Starting gRPC server on port %v", sa.APIPort)
 
 	s.Run()
 	err = s.Wait()
 	if err != nil {
-		fatalf("Mixer unexpectedly terminated: %v", err)
+		log.Fatalf("Mixer unexpectedly terminated: %v", err)
 	}
 
 	_ = s.Close()

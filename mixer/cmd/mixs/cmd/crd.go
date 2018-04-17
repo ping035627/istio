@@ -21,10 +21,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"istio.io/istio/mixer/cmd/shared"
 	"istio.io/istio/mixer/pkg/adapter"
 	"istio.io/istio/mixer/pkg/runtime"
 	"istio.io/istio/mixer/pkg/template"
+	"istio.io/istio/pkg/log"
 )
 
 // Group is the K8s API group.
@@ -33,7 +33,7 @@ const Group = "config.istio.io"
 // Version is the K8s API version.
 const Version = "v1alpha2"
 
-func crdCmd(tmplInfos map[string]template.Info, adapters []adapter.InfoFn, printf, fatalf shared.FormatFn) *cobra.Command {
+func crdCmd(tmplInfos map[string]template.Info, adapters []adapter.InfoFn) *cobra.Command {
 	adapterCmd := cobra.Command{
 		Use:   "crd",
 		Short: "CRDs (CustomResourceDefinition) available in Mixer",
@@ -43,10 +43,10 @@ func crdCmd(tmplInfos map[string]template.Info, adapters []adapter.InfoFn, print
 		Use:   "all",
 		Short: "List all CRDs",
 		Run: func(cmd *cobra.Command, args []string) {
-			printCrd(printf, fatalf, runtime.RulesKind, "istio.io.mixer", "core")
-			printCrd(printf, fatalf, runtime.AttributeManifestKind, "istio.io.mixer", "core")
-			listCrdsAdapters(printf, fatalf, adapters)
-			listCrdsInstances(printf, fatalf, tmplInfos)
+			printCrd(runtime.RulesKind, "istio.io.mixer", "core")
+			printCrd(runtime.AttributeManifestKind, "istio.io.mixer", "core")
+			listCrdsAdapters(adapters)
+			listCrdsInstances(tmplInfos)
 		},
 	})
 
@@ -54,7 +54,7 @@ func crdCmd(tmplInfos map[string]template.Info, adapters []adapter.InfoFn, print
 		Use:   "adapter",
 		Short: "List CRDs for available adapters",
 		Run: func(cmd *cobra.Command, args []string) {
-			listCrdsAdapters(printf, fatalf, adapters)
+			listCrdsAdapters(adapters)
 		},
 	})
 
@@ -62,23 +62,23 @@ func crdCmd(tmplInfos map[string]template.Info, adapters []adapter.InfoFn, print
 		Use:   "instance",
 		Short: "List CRDs for available instance kinds (mesh functions)",
 		Run: func(cmd *cobra.Command, args []string) {
-			listCrdsInstances(printf, fatalf, tmplInfos)
+			listCrdsInstances(tmplInfos)
 		},
 	})
 
 	return &adapterCmd
 }
 
-func listCrdsAdapters(printf, fatalf shared.FormatFn, infoFns []adapter.InfoFn) {
+func listCrdsAdapters(infoFns []adapter.InfoFn) {
 	for _, infoFn := range infoFns {
 		info := infoFn()
 		shrtName := info.Name /* TODO make this info.shortName when related PR is in. */
 		// TODO : Use the plural name from the adapter info
-		printCrd(printf, fatalf, shrtName, info.Name, "mixer-adapter")
+		printCrd(shrtName, info.Name, "mixer-adapter")
 	}
 }
 
-func listCrdsInstances(printf, fatalf shared.FormatFn, infos map[string]template.Info) {
+func listCrdsInstances(infos map[string]template.Info) {
 	tmplNames := make([]string, 0, len(infos))
 
 	for name := range infos {
@@ -90,7 +90,7 @@ func listCrdsInstances(printf, fatalf shared.FormatFn, infos map[string]template
 	for _, tmplName := range tmplNames {
 		info := infos[tmplName]
 		// TODO : Use the plural name from the template info
-		printCrd(printf, fatalf, info.Name, info.Impl, "mixer-instance")
+		printCrd(info.Name, info.Impl, "mixer-instance")
 	}
 }
 
@@ -130,7 +130,7 @@ func newCrdVar(shrtName, implName, label string) *crdVar {
 	}
 }
 
-func printCrd(printf, fatalf shared.FormatFn, shrtName, implName, label string) {
+func printCrd(shrtName, implName, label string) {
 	crdTemplate := `kind: CustomResourceDefinition
 apiVersion: apiextensions.k8s.io/v1beta1
 metadata:
@@ -152,7 +152,7 @@ spec:
 	w := &bytes.Buffer{}
 	t, _ = t.Parse(crdTemplate)
 	if err := t.Execute(w, newCrdVar(shrtName, implName, label)); err != nil {
-		fatalf("Could not create CRD " + err.Error())
+		log.Fatalf("Could not create CRD " + err.Error())
 	}
-	printf(w.String())
+	log.Infof(w.String())
 }
